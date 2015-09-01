@@ -19,33 +19,36 @@ import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.web.filter.GenericFilterBean;
 
 /**
- * Filter responsible to intercept the JWT in the HTTP header and attempt an authentication. It delegates the authentication to the authentication manager
- * 
+ * Filter responsible to intercept the JWT in the HTTP header and attempt an authentication. It delegates the
+ * authentication to the authentication manager.
+ *
  * @author Daniel Teixeira
  */
 public class Auth0AuthenticationFilter extends GenericFilterBean {
+
+    private final static String URL_PARAMETER_KEY = "key";
 
 	@Autowired
 	private AuthenticationManager authenticationManager;
 
 	private AuthenticationEntryPoint entryPoint;
 
-	public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain) throws IOException, ServletException {
+	public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain) throws IOException,
+            ServletException {
 
 		final HttpServletRequest request = (HttpServletRequest) req;
 		final HttpServletResponse response = (HttpServletResponse) res;
-		
+
 		if (request.getMethod().equals("OPTIONS")) {
 			// This is CORS request
 			chain.doFilter(request, response);
 			return;
 		}
 
-		String jwt = getToken((HttpServletRequest) request);
+		String jwt = getToken(request);
 
 		if (jwt != null) {
 			try {
-
 				Auth0JWTToken token = new Auth0JWTToken(jwt);
 				Authentication authResult = authenticationManager.authenticate(token);
 				SecurityContextHolder.getContext().setAuthentication(authResult);
@@ -58,13 +61,22 @@ public class Auth0AuthenticationFilter extends GenericFilterBean {
 		}
 
 		chain.doFilter(request, response);
-
 	}
 
+    private String getToken(HttpServletRequest httpRequest) {
+        String token = getTokenFromHeader(httpRequest);
+        if (token == null) {
+            // try from the URL parameters
+            token = this.getTokenFromUrl(httpRequest);
+        }
+
+        return token;
+    }
+
 	/**
-	 * Looks at the authorization bearer and extracts the JWT
+	 * Looks at the authorization bearer and extracts the JWT.
 	 */
-	private String getToken(HttpServletRequest httpRequest) {
+	private String getTokenFromHeader(HttpServletRequest httpRequest) {
 		String token = null;
 		final String authorizationHeader = httpRequest.getHeader("authorization");
 		if (authorizationHeader == null) {
@@ -76,7 +88,6 @@ public class Auth0AuthenticationFilter extends GenericFilterBean {
 		if (parts.length != 2) {
 			// "Unauthorized: Format is Authorization: Bearer [token]"
 			return null;
-
 		}
 
 		String scheme = parts[0];
@@ -86,8 +97,17 @@ public class Auth0AuthenticationFilter extends GenericFilterBean {
 		if (pattern.matcher(scheme).matches()) {
 			token = credentials;
 		}
+
 		return token;
 	}
+
+    /**
+     * Looks at the URL and extract the JWT from a well-known parameter name.
+     */
+    private String getTokenFromUrl(HttpServletRequest httpRequest) {
+        String token = httpRequest.getParameter(URL_PARAMETER_KEY);
+        return token;
+    }
 
 	public AuthenticationEntryPoint getEntryPoint() {
 		return entryPoint;
