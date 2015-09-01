@@ -9,7 +9,7 @@
 
 	<groupId>com.auth0</groupId>
   <artifactId>spring-security-auth0</artifactId>
-  <version>0.3-SNAPSHOT</version>
+  <version>0.3.1-SNAPSHOT</version>
   <name>spring-security-auth0</name>
   <url>http://auth0.com</url>
   <packaging>jar</packaging>
